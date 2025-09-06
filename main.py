@@ -21,7 +21,7 @@ GEMINI_API_KEY = os.environ.get("AIzaSyCf8O_UQdmFEBv_-KFGw3Em8qnPKUxAwsg")
 
 # !!! IMPORTANT: REPLACE THESE WITH YOUR ACTUAL IDs !!!
 GOOGLE_SHEET_ID = "1xNBNQjT_rAeawAQsGsdXVg3XsgUgCNNUb0v838Chk7s" 
-PROCESSED_FOLDER_ID = "1OOkneQqGEhgHKU8oIpr8gmUQ7siG1D-5" 
+PROCESSED_FOLDER_ID = "1ufJSIa_Gg8O3w3VuDoMXAOdylHCKRkvJ" 
 
 # --- Helper Function to Extract Folder ID from URL ---
 def get_id_from_url(url):
@@ -30,20 +30,19 @@ def get_id_from_url(url):
 
 # This dictionary should contain the final folder IDs, not the full URLs
 TEAM_FOLDERS = {
-    "Sharath": get_id_from_url("https://drive.google.com/drive/folders/1Sb7yKSNIvaXY84OsSIp58M2fi77V0W1m?usp=sharing"),
-    "Tavish": get_id_from_url("https://drive.google.com/drive/folders/1oSUdAVBv0XU73zPgcvKtO5BTt-ph43PI?usp=drive_link"),
-    "Sripal": get_id_from_url("https://drive.google.com/drive/folders/1iI-FGWcQe_8OxpGcn1-IkRZXvfct5D9S?usp=sharing"),
-    "Musthafa": get_id_from_url("https://drive.google.com/drive/folders/1COdFPn7NiNTXzIwMsAC8myVYqKL2fSjq?usp=sharing"),
-    "Hemanth": get_id_from_url("https://drive.google.com/drive/folders/1sxuZ872wPA1a9iDiYK9bQj3SMxk2EA5r?usp=sharing"),
-    "Luqman": get_id_from_url("https://drive.google.com/drive/folders/1l6AEG-41g3oqh5Lldx4-YEljmlwlMqoR?usp=sharing"),
-    "Darshan": get_id_from_url("https://drive.google.com/drive/folders/12oVR5ysssjQDf0vMtG4BXs7qVry7kqkN?usp=sharing"),
-    "Yash": get_id_from_url("https://drive.google.com/drive/folders/1j4pz0pWDqrZzJirE5i6r_RnVOPh1xSRf?usp=sharing"),
-    "Aditya": get_id_from_url("https://drive.google.com/drive/folders/1t1feBlc_6Q3_oMneWHw_NIZ0OZa8D6bY?usp=sharing"),
-    "Vishal": get_id_from_url("https://drive.google.com/drive/folders/1A2I64Drgl4UkV9CNeCYCrprwt7VYeeA-?usp=sharing"),
-    "Rahul": get_id_from_url("https://drive.google.com/drive/folders/1IHGc3a7Fg9tFMxoyZFFZCUQHZzC6Pk_6?usp=drive_link"),
-    "Aditya_Singh": get_id_from_url("https://drive.google.com/drive/folders/1CvYBuI40o6NvpVDgVQnzQIw1xfqAXCra?usp=sharing"),
-    "Akshay": get_id_from_url("https://drive.google.com/drive/folders/1nVlVoBglYS_ib8BWJvQXvpBisyLB_Tfa?usp=sharing"),
-    "Saleem": get_id_from_url("https://drive.google.com/drive/folders/1uEz-fltkZoOkw6-NrZa_mEdg9K-zwuqT?usp=drive_link")
+    "Sharath": get_id_from_url("https://drive.google.com/drive/folders/1tclHStXMgSyrJ_hekjg-HBk7AzpJthnk?usp=sharing"),
+    "Tavish": get_id_from_url("https://drive.google.com/drive/folders/12Ieo0pRyDT-FzZzzKSkFd7W9VUeNMrS8?usp=sharing"),
+    "Sripal": get_id_from_url("https://drive.google.com/drive/folders/1Jx_Eh1EwWQXTn5UJ1ipsAHufNSE3_6JW?usp=sharing"),
+    "Musthafa": get_id_from_url("https://drive.google.com/drive/folders/1vT7FoDkhOFrEoJse5NVfcnwvAJEEYkI1?usp=sharing"),
+    "Hemanth": get_id_from_url("https://drive.google.com/drive/folders/1RgBpp16evtvhhOm6agzfLoCpdtVSFTrJ?usp=sharing"),
+    "Luqman": get_id_from_url("https://drive.google.com/drive/folders/1bULuHrwJOLDCy2P966HG-fJeL4NvJX-L?usp=sharing"),
+    "Darshan": get_id_from_url("https://drive.google.com/drive/folders/1BELBndPySeuDSG_Jj49QzdYfMpbwY4SL?usp=sharing"),
+    "Yash": get_id_from_url("https://drive.google.com/drive/folders/1DqQkGB03jo3rEkayyulcb7ZRVCVf1QXo?usp=sharing"),
+    "Aditya": get_id_from_url("https://drive.google.com/drive/folders/1K9ZoKtnYEM0VGvi5IJohy4ZENJMNrVly?usp=sharing"),
+    "Vishal": get_id_from_url("https://drive.google.com/drive/folders/14SlRaEcfOtYBSmFuNMC7A-gTGWdN2e4k?usp=sharing"),
+    "Rahul": get_id_from_url("https://drive.google.com/drive/folders/1FGJopLfEJonGHEd8yb-EVLpIRP8k7R1W?usp=sharing"),
+    "Akshay": get_id_from_url("https://drive.google.com/drive/folders/1ykWhLVloJf6QzVT1fU6xWqgT8TdaYhNe?usp=sharing"),
+    "Saleem": get_id_from_url("https://drive.google.com/drive/folders/15aCudaUyg6vD3y7bwgIz5vMxaghBeNUd?usp=sharing")
 }
 # --- End of Configuration ---
 
