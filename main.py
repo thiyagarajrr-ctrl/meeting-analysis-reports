@@ -7,70 +7,74 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import google.generativeai as genai
-from gspread import Client as GspreadClient, Spreadsheet
+import gspread
 
-# Ensure these libraries are in your requirements.txt
+# --- Dependencies (Ensure these are in your requirements.txt) ---
+# faster-whisper, google-api-python-client, google-auth-oauthlib, gspread, google-generativeai
 from faster_whisper import WhisperModel
 
-# --- Configuration (Set these in your GitHub Secrets or environment variables) ---
+# --- Configuration ---
+# These values MUST be set in your GitHub repository's Secrets
+# Go to Settings -> Secrets and variables -> Actions
 GCP_SERVICE_ACCOUNT_KEY = os.environ.get("3dc78c5ae3b48b6653150e440deb4907ce289675")
-GOOGLE_SHEET_ID = "1xNBNQjT_rAeawAQsGsdXVg3XsgUgCNNUb0v838Chk7s"  # Replace with your actual Sheet ID
-PROCESSED_FOLDER_ID = "1OOkneQqGEhgHKU8oIpr8gmUQ7siG1D-5"  # Create a new folder in Drive for processed files
 GEMINI_API_KEY = os.environ.get("AIzaSyCf8O_UQdmFEBv_-KFGw3Em8qnPKUxAwsg")
 
-# Configuration for your team folders in Google Drive
+# !!! IMPORTANT: REPLACE THESE WITH YOUR ACTUAL IDs !!!
+GOOGLE_SHEET_ID = "1xNBNQjT_rAeawAQsGsdXVg3XsgUgCNNUb0v838Chk7s" 
+PROCESSED_FOLDER_ID = "1OOkneQqGEhgHKU8oIpr8gmUQ7siG1D-5" 
+
+# --- Helper Function to Extract Folder ID from URL ---
+def get_id_from_url(url):
+    """Extracts the Google Drive folder ID from its URL."""
+    return url.split('/')[-1].split('?')[0]
+
+# This dictionary should contain the final folder IDs, not the full URLs
 TEAM_FOLDERS = {
-    {
-{
-  "Sharath": "https://drive.google.com/drive/folders/1Sb7yKSNIvaXY84OsSIp58M2fi77V0W1m?usp=sharing",
-  "Tavish": "https://drive.google.com/drive/folders/1oSUdAVBv0XU73zPgcvKtO5BTt-ph43PI?usp=drive_link",
-  "Sripal": "https://drive.google.com/drive/folders/1iI-FGWcQe_8OxpGcn1-IkRZXvfct5D9S?usp=sharing",
-  "Musthafa": "https://drive.google.com/drive/folders/1COdFPn7NiNTXzIwMsAC8myVYqKL2fSjq?usp=sharing",
-  "Hemanth": "https://drive.google.com/drive/folders/1sxuZ872wPA1a9iDiYK9bQj3SMxk2EA5r?usp=sharing",
-  "Luqman": "https://drive.google.com/drive/folders/1l6AEG-41g3oqh5Lldx4-YEljmlwlMqoR?usp=sharing",
-  "Darshan": "https://drive.google.com/drive/folders/12oVR5ysssjQDf0vMtG4BXs7qVry7kqkN?usp=sharing",
-  "Yash": "https://drive.google.com/drive/folders/1j4pz0pWDqrZzJirE5i6r_RnVOPh1xSRf?usp=sharing",
-  "Aditya": "https://drive.google.com/drive/folders/1t1feBlc_6Q3_oMneWHw_NIZ0OZa8D6bY?usp=sharing",
-  "Vishal": "https://drive.google.com/drive/folders/1A2I64Drgl4UkV9CNeCYCrprwt7VYeeA-?usp=sharing",
-  "Rahul": "https://drive.google.com/drive/folders/1IHGc3a7Fg9tFMxoyZFFZCUQHZzC6Pk_6?usp=drive_link",
-  "Aditya_Singh": "https://drive.google.com/drive/folders/1CvYBuI40o6NvpVDgVQnzQIw1xfqAXCra?usp=sharing",
-  "Akshay": "https://drive.google.com/drive/folders/1nVlVoBglYS_ib8BWJvQXvpBisyLB_Tfa?usp=sharing",
-  "Saleem": "https://drive.google.com/drive/folders/1uEz-fltkZoOkw6-NrZa_mEdg9K-zwuqT?usp=drive_link"
-}
-
-}
-
-    # Add all 18 team members and their folder IDs here
+    "Sharath": get_id_from_url("https://drive.google.com/drive/folders/1Sb7yKSNIvaXY84OsSIp58M2fi77V0W1m?usp=sharing"),
+    "Tavish": get_id_from_url("https://drive.google.com/drive/folders/1oSUdAVBv0XU73zPgcvKtO5BTt-ph43PI?usp=drive_link"),
+    "Sripal": get_id_from_url("https://drive.google.com/drive/folders/1iI-FGWcQe_8OxpGcn1-IkRZXvfct5D9S?usp=sharing"),
+    "Musthafa": get_id_from_url("https://drive.google.com/drive/folders/1COdFPn7NiNTXzIwMsAC8myVYqKL2fSjq?usp=sharing"),
+    "Hemanth": get_id_from_url("https://drive.google.com/drive/folders/1sxuZ872wPA1a9iDiYK9bQj3SMxk2EA5r?usp=sharing"),
+    "Luqman": get_id_from_url("https://drive.google.com/drive/folders/1l6AEG-41g3oqh5Lldx4-YEljmlwlMqoR?usp=sharing"),
+    "Darshan": get_id_from_url("https://drive.google.com/drive/folders/12oVR5ysssjQDf0vMtG4BXs7qVry7kqkN?usp=sharing"),
+    "Yash": get_id_from_url("https://drive.google.com/drive/folders/1j4pz0pWDqrZzJirE5i6r_RnVOPh1xSRf?usp=sharing"),
+    "Aditya": get_id_from_url("https://drive.google.com/drive/folders/1t1feBlc_6Q3_oMneWHw_NIZ0OZa8D6bY?usp=sharing"),
+    "Vishal": get_id_from_url("https://drive.google.com/drive/folders/1A2I64Drgl4UkV9CNeCYCrprwt7VYeeA-?usp=sharing"),
+    "Rahul": get_id_from_url("https://drive.google.com/drive/folders/1IHGc3a7Fg9tFMxoyZFFZCUQHZzC6Pk_6?usp=drive_link"),
+    "Aditya_Singh": get_id_from_url("https://drive.google.com/drive/folders/1CvYBuI40o6NvpVDgVQnzQIw1xfqAXCra?usp=sharing"),
+    "Akshay": get_id_from_url("https://drive.google.com/drive/folders/1nVlVoBglYS_ib8BWJvQXvpBisyLB_Tfa?usp=sharing"),
+    "Saleem": get_id_from_url("https://drive.google.com/drive/folders/1uEz-fltkZoOkw6-NrZa_mEdg9K-zwuqT?usp=drive_link")
 }
 # --- End of Configuration ---
 
-# Set up basic logging at the beginning of your script
+# Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def authenticate_google_services():
-    """Authenticates with Google Drive, Sheets, and Gemini APIs."""
+    """Authenticates with Google Drive and Sheets using service account credentials."""
     try:
+        if not GCP_SERVICE_ACCOUNT_KEY:
+            logging.error("GCP_SA_KEY environment variable not found.")
+            return None, None
+            
         creds_info = json.loads(GCP_SERVICE_ACCOUNT_KEY)
-        creds = service_account.Credentials.from_service_account_info(
-            creds_info,
-            scopes=[
-                "https://www.googleapis.com/auth/drive", # 'drive' scope allows moving files
-                "https://www.googleapis.com/auth/spreadsheets",
-            ],
-        )
+        scopes = [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets",
+        ]
+        creds = service_account.Credentials.from_service_account_info(creds_info, scopes=scopes)
         
         drive_service = build("drive", "v3", credentials=creds)
-        sheets_client = GspreadClient(auth=creds)
-        genai.configure(api_key=GEMINI_API_KEY)
+        gc = gspread.service_account(credentials=creds)
         
         logging.info("Successfully authenticated with Google services.")
-        return drive_service, sheets_client
+        return drive_service, gc
     except Exception as e:
         logging.error(f"Authentication failed: {e}")
         return None, None
 
-def download_audio_file(drive_service, file_id, file_name):
-    """Downloads an audio file from Google Drive to a temporary location."""
+def download_file(drive_service, file_id):
+    """Downloads a file from Google Drive into memory."""
     request = drive_service.files().get_media(fileId=file_id)
     fh = io.BytesIO()
     downloader = MediaIoBaseDownload(fh, request)
@@ -78,143 +82,121 @@ def download_audio_file(drive_service, file_id, file_name):
     while not done:
         status, done = downloader.next_chunk()
         logging.info(f"Download progress: {int(status.progress() * 100)}%")
-    
-    with tempfile.NamedTemporaryFile(suffix=os.path.splitext(file_name)[1], delete=False) as temp_file:
-        temp_file.write(fh.getvalue())
-        return temp_file.name
+    fh.seek(0)
+    return fh
 
-def transcribe_audio(file_path):
-    """Transcribes an audio file using Faster-Whisper."""
+def transcribe_audio(file_content, original_filename):
+    """Transcribes audio from file content in memory using Faster-Whisper."""
+    with tempfile.NamedTemporaryFile(suffix=os.path.splitext(original_filename)[1], delete=False) as temp_file:
+        temp_file.write(file_content.read())
+        temp_file_path = temp_file.name
+
     try:
-        logging.info("Initializing Whisper model...")
-        model_size = "tiny.en"  # Can be "base.en" or "small.en" for better accuracy
-        model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        logging.info("Initializing Whisper model (tiny.en)...")
+        model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
         
-        logging.info(f"Transcribing {file_path}...")
-        segments, _ = model.transcribe(file_path, beam_size=5)
+        logging.info(f"Transcribing {temp_file_path}...")
+        segments, _ = model.transcribe(temp_file_path, beam_size=5)
         
-        transcript = ""
-        for segment in segments:
-            transcript += segment.text
+        transcript = " ".join(segment.text for segment in segments)
         
         logging.info("Transcription completed successfully.")
         return transcript.strip()
     except Exception as e:
         logging.error(f"Transcription failed: {e}")
         return None
+    finally:
+        os.remove(temp_file_path)
+        logging.info(f"Cleaned up temporary file: {temp_file_path}")
 
-def analyze_transcript_with_gemini(transcript):
+def analyze_transcript_with_gemini(transcript, owner_name):
     """Analyzes the transcript to extract data points using the Gemini API."""
+    if not GEMINI_API_KEY:
+        logging.error("GEMINI_API_KEY environment variable not found.")
+        return None
+
+    genai.configure(api_key=GEMINI_API_KEY)
+    
     try:
-        model = genai.GenerativeModel("gemini-1.5-pro")
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
         prompt = f"""
-        Analyze the following meeting transcript and extract the following 47 data points.
-        Please format the output as a JSON object with the specified keys.
-        If a data point cannot be found, use "N/A" as the value.
+        ### ROLE AND GOAL ###
+        You are an expert sales meeting analyst for our company, specializing in Society Management software. Your goal is to meticulously analyze a sales meeting transcript, score the performance of the sales representative '{owner_name}', and extract key business information. Your analysis must differentiate whether the primary product discussed was our **ERP** solution or our **ASP** (Accounting Services as a Product) offering.
 
-        Transcript:
+        ### CONTEXT: PRODUCT AND PRICING INFORMATION ###
+        ---
+        **Product 1: ERP (Enterprise Resource Planning)**
+        This is our comprehensive, self-service software solution for society management.
+        * **Pricing:** ₹12 + 18% GST per flat, per month.
+        * **Key Differentiators & Features:**
+            * **Financial & Accounting:** Instant settlement of payments, minimal gateway charges, full Tally integration (import/export), in-house payment gateway, superfast data migration, generation of all key financial reports (Balance Sheet, TDS, GST, etc.), e-invoicing, bank reconciliation (MT940), vendor accounting dashboard, budgeting, and bill ageing reports.
+            * **Billing Automation:** 350+ bill combinations, bill scheduler, 2-level maker-checker approval system, automated reminders, customer interest calculations, proforma invoicing, meter reading uploads for automated invoices, and late fee calculation.
+            * **Management & Operations:** Comprehensive property management, inventory management, asset management with QR code tagging, purchase order approval process, preventive planned maintenance (PPM) reminders, and date & time stamps for vendor entry.
+            * **Resident Features:** Virtual accounts for payments.
+            * **Security & Access:** Role-based approval and access controls.
+
+        **Product 2: ASP (Accounting Services as a Product)**
+        This is a managed service where we handle the society's accounting for them using our software. It's a "done-for-you" service.
+        * **Pricing:** ₹22.5 + 18% GST per flat, per month.
+        * **Scope of Work & Offerings:**
+            * A dedicated accountant is provided for virtual support.
+            * We handle all computerized online billing and receipt generation.
+            * We manage book-keeping for all incomes & expenses.
+            * We perform bank reconciliation and follow up on suspense entries.
+            * We provide system-generated, non-audited financial reports.
+            * We assist with the finalization of accounts and coordinate with auditors.
+            * Includes all community and visitor management system features.
+            * Also includes vendor, purchase order, inventory, and amenities booking management.
+            * Software access and data backups are included.
+            * **Crucial Note:** This is a paid accounting service. The scope of work changes if the society decides to purchase the ERP software instead.
+
+        ---
+        ### INPUT: MEETING TRANSCRIPT ###
+        ---
         {transcript}
+        ---
 
-        Data points to extract:
-        1. Date
-        2. POC Name
-        3. Society Name
-        4. Visit Type
-        5. Meeting Type
-        6. Amount Value
-        7. Months
-        8. Deal Status
-        9. Vendor Leads
-        10. Society Leads
-        11. Opening Pitch Score
-        12. Product Pitch Score
-        13. Cross-Sell / Opportunity Handling
-        14. Closing Effectiveness
-        15. Negotiation Strength
-        16. Overall Sentiment
-        17. Total Score
-        18. % Score
-        19. Risks / Unresolved Issues
-        20. Improvements Needed
-        21. Owner (Who handled the meeting)
-        22. Email Id
-        23. Kibana ID
-        24. Manager
-        25. Product Pitch
-        26. Team
-        27. Media Link
-        28. Doc Link
-        29. Suggestions & Missed Topics
-        30. Pre-meeting brief
-        31. Meeting duration (min)
-        32. Rebuttal Handling
-        33. Rapport Building
-        34. Improvement Areas
-        35. Product Knowledge Displayed
-        36. Call Effectiveness and Control
-        37. Next Step Clarity and Commitment
-        38. Missed Opportunities
-        39. Key Discussion Points
-        40. Key Questions
-        41. Competition Discussion
-        42. Action items
-        43. Positive Factors
-        44. Negative Factors
-        45. Customer Needs
-        46. Overall Client Sentiment
-        47. Feature Checklist Coverage
+        ### TASK AND INSTRUCTIONS ###
+        Analyze the provided meeting transcript based on the product context above. First, determine if the meeting was primarily about **ERP**, **ASP**, or a combination of both. Then, extract the following 47 data points. For scoring, evaluate how well the sales rep pitched the relevant product's features and handled objections. If a specific piece of information is not mentioned, you MUST return "N/A".
 
-        Output format (JSON):
+        Your output MUST be a single, valid JSON object.
+
+        ### REQUIRED JSON OUTPUT FORMAT ###
         {{
-          "Date": "...",
-          "POC Name": "...",
-          "Society Name": "...",
-          "Visit Type": "...",
-          "Meeting Type": "...",
-          "Amount Value": "...",
-          "Months": "...",
-          "Deal Status": "...",
-          "Vendor Leads": "...",
-          "Society Leads": "...",
-          "Opening Pitch Score": "...",
-          "Product Pitch Score": "...",
-          "Cross-Sell / Opportunity Handling": "...",
-          "Closing Effectiveness": "...",
-          "Negotiation Strength": "...",
-          "Overall Sentiment": "...",
-          "Total Score": "...",
-          "Percent Score": "...",
-          "Risks / Unresolved Issues": "...",
-          "Improvements Needed": "...",
-          "Owner": "...",
-          "Email Id": "...",
-          "Kibana ID": "...",
-          "Manager": "...",
-          "Product Pitch": "...",
-          "Team": "...",
-          "Media Link": "...",
-          "Doc Link": "...",
-          "Suggestions & Missed Topics": "...",
-          "Pre-meeting brief": "...",
-          "Meeting duration (min)": "...",
-          "Rebuttal Handling": "...",
-          "Rapport Building": "...",
-          "Improvement Areas": "...",
-          "Product Knowledge Displayed": "...",
-          "Call Effectiveness and Control": "...",
-          "Next Step Clarity and Commitment": "...",
-          "Missed Opportunities": "...",
-          "Key Discussion Points": "...",
-          "Key Questions": "...",
-          "Competition Discussion": "...",
-          "Action items": "...",
-          "Positive Factors": "...",
-          "Negative Factors": "...",
-          "Customer Needs": "...",
-          "Overall Client Sentiment": "...",
-          "Feature Checklist Coverage": "..."
+            "Date": "...", "POC Name": "...", "Society Name": "...", "Visit Type": "...",
+            "Meeting Type": "e.g., ERP Pitch, ASP Pitch, ERP & ASP, General Inquiry",
+            "Amount Value": "Extract any discussed price per flat, total value, or package cost.",
+            "Months": "...",
+            "Deal Status": "e.g., Hot Lead, Warm Lead, Cold Lead, Negotiation, Demo Scheduled",
+            "Vendor Leads": "...", "Society Leads": "...",
+            "Opening Pitch Score": "1-10 on rapport and agenda setting.",
+            "Product Pitch Score": "1-10, based on how well the key features of the discussed product (ERP or ASP) were explained.",
+            "Cross-Sell / Opportunity Handling": "1-10, did the rep correctly identify the client's need for ERP vs. ASP? Was an upsell/cross-sell attempted?",
+            "Closing Effectiveness": "1-10 on defining clear next steps.",
+            "Negotiation Strength": "1-10, how well were objections about price or features handled using our differentiators?",
+            "Overall Sentiment": "Positive, Neutral, Negative, Mixed",
+            "Total Score": "Sum of the 5 scores above (out of 50).",
+            "% Score": "Total Score / 50, as a percentage.",
+            "Risks / Unresolved Issues": "...", "Improvements Needed": "...", "Owner": "{owner_name}",
+            "Email Id": "...", "Kibana ID": "...", "Manager": "...",
+            "Product Pitch": "Summarize the pitch delivered. Was it clearly for ERP or ASP?",
+            "Team": "...", "Media Link": "...", "Doc Link": "...",
+            "Suggestions & Missed Topics": "What key features (e.g., 'Instant Settlement' for ERP, 'Dedicated Accountant' for ASP) were missed?",
+            "Pre-meeting brief": "...", "Meeting duration (min)": "...",
+            "Rebuttal Handling": "Describe how objections were handled.",
+            "Rapport Building": "...", "Improvement Areas": "...",
+            "Product Knowledge Displayed": "How well did the rep explain the features relevant to the client's needs?",
+            "Call Effectiveness and Control": "...", "Next Step Clarity and Commitment": "...",
+            "Missed Opportunities": "e.g., Client seemed overwhelmed, should have pitched ASP instead of ERP.",
+            "Key Discussion Points": "...", "Key Questions": "...", "Competition Discussion": "...", "Action items": "...",
+            "Positive Factors": "...", "Negative Factors": "...",
+            "Customer Needs": "What were the client's main pain points? (e.g., Tally issues, reconciliation problems, billing complexity).",
+            "Overall Client Sentiment": "...",
+            "Feature Checklist Coverage": "List the key features mentioned from the relevant product (ERP or ASP)."
         }}
         """
+        
         response = model.generate_content(
             prompt,
             generation_config={"response_mime_type": "application/json"}
@@ -226,117 +208,73 @@ def analyze_transcript_with_gemini(transcript):
         logging.error(f"Gemini API analysis failed: {e}")
         return None
 
-def write_to_google_sheets(sheets_client, spreadsheet_id, data):
+def write_to_google_sheets(gsheets_client, data):
     """Appends a new row of data to the Google Sheet."""
     try:
-        sheet = sheets_client.open_by_key(spreadsheet_id)
-        worksheet = sheet.get_worksheet(0) # Assumes the first sheet
+        spreadsheet = gsheets_client.open_by_key(GOOGLE_SHEET_ID)
+        worksheet = spreadsheet.get_worksheet(0) # Assumes the first sheet
         
-        # Ensure the order of data matches your sheet's columns
-        row_values = [
-            data.get("Date", "N/A"),
-            data.get("POC Name", "N/A"),
-            data.get("Society Name", "N/A"),
-            data.get("Visit Type", "N/A"),
-            data.get("Meeting Type", "N/A"),
-            data.get("Amount Value", "N/A"),
-            data.get("Months", "N/A"),
-            data.get("Deal Status", "N/A"),
-            data.get("Vendor Leads", "N/A"),
-            data.get("Society Leads", "N/A"),
-            data.get("Opening Pitch Score", "N/A"),
-            data.get("Product Pitch Score", "N/A"),
-            data.get("Cross-Sell / Opportunity Handling", "N/A"),
-            data.get("Closing Effectiveness", "N/A"),
-            data.get("Negotiation Strength", "N/A"),
-            data.get("Overall Sentiment", "N/A"),
-            data.get("Total Score", "N/A"),
-            data.get("Percent Score", "N/A"),
-            data.get("Risks / Unresolved Issues", "N/A"),
-            data.get("Improvements Needed", "N/A"),
-            data.get("Owner", "N/A"),
-            data.get("Email Id", "N/A"),
-            data.get("Kibana ID", "N/A"),
-            data.get("Manager", "N/A"),
-            data.get("Product Pitch", "N/A"),
-            data.get("Team", "N/A"),
-            data.get("Media Link", "N/A"),
-            data.get("Doc Link", "N/A"),
-            data.get("Suggestions & Missed Topics", "N/A"),
-            data.get("Pre-meeting brief", "N/A"),
-            data.get("Meeting duration (min)", "N/A"),
-            data.get("Rebuttal Handling", "N/A"),
-            data.get("Rapport Building", "N/A"),
-            data.get("Improvement Areas", "N/A"),
-            data.get("Product Knowledge Displayed", "N/A"),
-            data.get("Call Effectiveness and Control", "N/A"),
-            data.get("Next Step Clarity and Commitment", "N/A"),
-            data.get("Missed Opportunities", "N/A"),
-            data.get("Key Discussion Points", "N/A"),
-            data.get("Key Questions", "N/A"),
-            data.get("Competition Discussion", "N/A"),
-            data.get("Action items", "N/A"),
-            data.get("Positive Factors", "N/A"),
-            data.get("Negative Factors", "N/A"),
-            data.get("Customer Needs", "N/A"),
-            data.get("Overall Client Sentiment", "N/A"),
-            data.get("Feature Checklist Coverage", "N/A"),
-        ]
+        headers = worksheet.row_values(1)
+        if not headers:
+            logging.warning("No headers found in the Google Sheet. Writing data keys as headers first.")
+            headers = list(data.keys())
+            worksheet.append_row(headers, value_input_option="USER_ENTERED")
+
+        row_to_insert = [data.get(header, "N/A") for header in headers]
         
-        worksheet.append_row(row_values, value_input_option="USER_ENTERED")
-        logging.info("Data successfully written to Google Sheets.")
+        worksheet.append_row(row_to_insert, value_input_option="USER_ENTERED")
+        logging.info(f"Data for '{data.get('Society Name', 'N/A')}' successfully written to Google Sheets.")
     except Exception as e:
         logging.error(f"Failed to write to Google Sheets: {e}")
 
-def move_file_to_processed(drive_service, file_id, source_folder_id, processed_folder_id):
-    """Moves a file from its source folder to a 'Processed' folder."""
+def move_file_to_processed(drive_service, file_id, source_folder_id):
+    """Moves a file from its source folder to the processed folder."""
     try:
         drive_service.files().update(
             fileId=file_id,
-            addParents=processed_folder_id,
+            addParents=PROCESSED_FOLDER_ID,
             removeParents=source_folder_id,
             fields="id, parents"
         ).execute()
-        logging.info(f"Successfully moved file {file_id} to 'Processed' folder.")
+        logging.info(f"Successfully moved file {file_id} to processed folder.")
     except Exception as e:
         logging.error(f"Failed to move file {file_id}: {e}")
 
 def main():
-    drive_service, sheets_client = authenticate_google_services()
-    if not drive_service or not sheets_client:
+    """Main function to run the entire workflow."""
+    if GOOGLE_SHEET_ID == "YOUR_GOOGLE_SHEET_ID_HERE" or PROCESSED_FOLDER_ID == "YOUR_PROCESSED_ITEMS_FOLDER_ID_HERE":
+        logging.error("CRITICAL: GOOGLE_SHEET_ID or PROCESSED_FOLDER_ID has not been set in main.py. Exiting.")
+        return
+
+    drive_service, gsheets_client = authenticate_google_services()
+    if not drive_service or not gsheets_client:
+        logging.error("Could not authenticate. Exiting.")
         return
 
     for member_name, folder_id in TEAM_FOLDERS.items():
-        logging.info(f"Checking folder for team member: {member_name}")
+        logging.info(f"--- Checking folder for team member: {member_name} ---")
         try:
-            results = drive_service.files().list(
-                q=f"'{folder_id}' in parents and (mimeType='audio/mpeg' or mimeType='video/mp4' or mimeType='audio/mp4')",
-                fields="nextPageToken, files(id, name)",
-            ).execute()
+            query = f"'{folder_id}' in parents and (mimeType contains 'audio/' or mimeType contains 'video/')"
+            results = drive_service.files().list(q=query, fields="files(id, name)").execute()
             files = results.get("files", [])
             
             if not files:
-                logging.info(f"No new audio files found for {member_name}.")
+                logging.info(f"No new files found for {member_name}.")
                 continue
             
             for file in files:
-                file_id = file["id"]
-                file_name = file["name"]
-                logging.info(f"Processing file: {file_name}")
-                
-                temp_file_path = download_audio_file(drive_service, file_id, file_name)
-                
-                transcript = transcribe_audio(temp_file_path)
-                if transcript:
-                    analysis_data = analyze_transcript_with_gemini(transcript)
-                    
-                    if analysis_data:
-                        write_to_google_sheets(sheets_client, GOOGLE_SHEET_ID, analysis_data)
-                        move_file_to_processed(drive_service, file_id, folder_id, PROCESSED_FOLDER_ID)
-                
-                os.remove(temp_file_path)
-                logging.info(f"Cleaned up temporary file: {temp_file_path}")
+                file_id, file_name = file["id"], file["name"]
+                logging.info(f"Processing file: {file_name} ({file_id})")
 
+                file_content = download_file(drive_service, file_id)
+                transcript = transcribe_audio(file_content, file_name)
+                
+                if transcript:
+                    analysis_data = analyze_transcript_with_gemini(transcript, member_name)
+                    if analysis_data:
+                        write_to_google_sheets(gsheets_client, analysis_data)
+                        move_file_to_processed(drive_service, file_id, folder_id)
+        
         except Exception as e:
             logging.error(f"An error occurred while processing {member_name}'s folder: {e}")
 
