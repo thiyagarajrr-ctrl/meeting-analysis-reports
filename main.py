@@ -59,6 +59,24 @@ def authenticate_google_services():
         creds = service_account.Credentials.from_service_account_info(creds_info, scopes=scopes)
         
         drive_service = build("drive", "v3", credentials=creds)
+        
+        # --- THIS IS THE CORRECTED LINE ---
+        gc = gspread.Client(auth=creds)
+        
+        logging.info("SUCCESS: Authentication with Google services complete.")
+        return drive_service, gc
+    except Exception as e:
+        logging.error(f"CRITICAL: Authentication failed: {e}")
+        return None, None
+            
+        creds_info = json.loads(GCP_SERVICE_ACCOUNT_KEY)
+        scopes = [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/spreadsheets",
+        ]
+        creds = service_account.Credentials.from_service_account_info(creds_info, scopes=scopes)
+        
+        drive_service = build("drive", "v3", credentials=creds)
         gc = gspread.service_account(credentials=creds)
         
         logging.info("SUCCESS: Authentication with Google services complete.")
