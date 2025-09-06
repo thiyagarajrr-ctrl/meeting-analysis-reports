@@ -254,38 +254,44 @@ def move_file_to_processed(drive_service, file_id, source_folder_id):
         logging.error(f"ERROR: Failed to move file {file_id}: {e}")
 
 def main():
-    """Main function to run a targeted test on a SINGLE folder."""
-    logging.info("--- Starting SINGLE FOLDER TEST ---")
-
-    # --- Manually enter one folder ID to test ---
-    TEST_FOLDER_ID = "1tclHStXMgSyrJ_hekjg-HBk7AzpJthnk" # Use Sharath's folder ID
-    TEST_MEMBER_NAME = "Sharath"
-    # ---------------------------------------------
+    logging.info("--- Starting main execution ---")
+    if GOOGLE_SHEET_ID == "YOUR_GOOGLE_SHEET_ID_HERE" or PROCESSED_FOLDER_ID == "YOUR_PROCESSED_ITEMS_FOLDER_ID_HERE":
+        logging.error("CRITICAL: GOOGLE_SHEET_ID or PROCESSED_FOLDER_ID has not been set in main.py. Exiting.")
+        return
 
     drive_service, gsheets_client = authenticate_google_services()
-    if not drive_service:
+    if not drive_service or not gsheets_client:
         logging.error("CRITICAL: Exiting due to authentication failure.")
         return
 
-    try:
-        query = f"'{TEST_FOLDER_ID}' in parents and (mimeType contains 'audio/' or mimeType contains 'video/')"
-        logging.info(f"Executing test query: {query}")
-        
-        results = drive_service.files().list(q=query, fields="files(id, name)").execute()
-        files = results.get("files", [])
-        
-        logging.info(f"!!! TEST RESULT: Found {len(files)} file(s) in the test folder. !!!")
-
-        if files:
+    logging.info("Starting to check team folders...")
+    for member_name, folder_id in TEAM_FOLDERS.items():
+        logging.info(f"--- Checking folder for team member: {member_name} (Folder ID: {folder_id}) ---")
+        try:
+            query = f"'{folder_id}' in parents and (mimeType contains 'audio/' or mimeType contains 'video/')"
+            logging.info(f"Executing Drive search query: {query}")
+            results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+            files = results.get("files", [])
+            
+            logging.info(f"Found {len(files)} new file(s) for {member_name}.")
+            
+            if not files:
+                continue
+            
             for file in files:
-                logging.info(f"  - Found file: {file['name']} ({file['id']})")
-        else:
-            logging.info("!!! TEST FAILED: The query returned 0 files. Check Folder ID and Sharing Permissions again. !!!")
+                file_id, file_name = file["id"], file["name"]
+                logging.info(f"--- Processing file: {file_name} (ID: {file_id}) ---")
 
-    except Exception as e:
-        logging.error(f"CRITICAL ERROR during test: {e}")
+                file_content = download_file(drive_service, file_id)
+                transcript = transcribe_audio(file_content, file_name)
+                
+                if transcript:
+                    analysis_data = analyze_transcript_with_gemini(transcript, member_name)
+                    if analysis_data:
+                        write_to_google_sheets(gsheets_client, analysis_data)
+                        move_file_to_processed(drive_service, file_id, folder_id)
+        
+        except Exception as e:
+            logging.error(f"CRITICAL ERROR while processing {member_name}'s folder: {e}")
     
-    logging.info("--- SINGLE FOLDER TEST Finished ---")
-
-if __name__ == "__main__":
-    main()
+    logging.info("--- Main execution finished ---")
