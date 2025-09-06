@@ -2,11 +2,4 @@ faster-whisper
 google-api-python-client
 gspread
 google-generativeai
-google-auth
 google-auth-oauthlib
-google-auth-httplib2
-python-pptx
-openpyxl
-PyMuPDF
-markdown
-google-generativeai
