@@ -13,7 +13,6 @@ import gspread
 from faster_whisper import WhisperModel
 
 # --- Configuration ---
-# These lines read the secret names from your GitHub repository settings.
 GCP_SERVICE_ACCOUNT_KEY = os.environ.get("GCP_SA_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
@@ -59,25 +58,7 @@ def authenticate_google_services():
         creds = service_account.Credentials.from_service_account_info(creds_info, scopes=scopes)
         
         drive_service = build("drive", "v3", credentials=creds)
-        
-        # --- THIS IS THE CORRECTED LINE ---
         gc = gspread.Client(auth=creds)
-        
-        logging.info("SUCCESS: Authentication with Google services complete.")
-        return drive_service, gc
-    except Exception as e:
-        logging.error(f"CRITICAL: Authentication failed: {e}")
-        return None, None
-            
-        creds_info = json.loads(GCP_SERVICE_ACCOUNT_KEY)
-        scopes = [
-            "https://www.googleapis.com/auth/drive",
-            "https://www.googleapis.com/auth/spreadsheets",
-        ]
-        creds = service_account.Credentials.from_service_account_info(creds_info, scopes=scopes)
-        
-        drive_service = build("drive", "v3", credentials=creds)
-        gc = gspread.service_account(credentials=creds)
         
         logging.info("SUCCESS: Authentication with Google services complete.")
         return drive_service, gc
@@ -256,6 +237,7 @@ def move_file_to_processed(drive_service, file_id, source_folder_id):
 def main():
     logging.info("--- Starting main execution ---")
     if GOOGLE_SHEET_ID == "YOUR_GOOGLE_SHEET_ID_HERE" or PROCESSED_FOLDER_ID == "YOUR_PROCESSED_ITEMS_FOLDER_ID_HERE":
+        # This check is now redundant since you've hardcoded the IDs, but it's good practice.
         logging.error("CRITICAL: GOOGLE_SHEET_ID or PROCESSED_FOLDER_ID has not been set in main.py. Exiting.")
         return
 
@@ -295,3 +277,5 @@ def main():
             logging.error(f"CRITICAL ERROR while processing {member_name}'s folder: {e}")
     
     logging.info("--- Main execution finished ---")
+
+if __name__ ==
