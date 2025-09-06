@@ -278,4 +278,6 @@ def main():
     
     logging.info("--- Main execution finished ---")
 
-if __name__ ==
+if __name__ == "__main__":
+    main()
+    
